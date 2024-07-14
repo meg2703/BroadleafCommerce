@@ -124,76 +124,61 @@ public class LegacyMergeCartServiceImpl implements MergeCartService {
         mergeCartResponse.setOrder(customerCart);
         return mergeCartResponse;
     }
-    
+
     @Override
     public ReconstructCartResponse reconstructCart(Customer customer, boolean priceOrder) throws PricingException {
         ReconstructCartResponse reconstructCartResponse = new ReconstructCartResponse();
         Order customerCart = orderService.findCartForCustomer(customer);
         if (customerCart != null) {
-            List<OrderItem> itemsToRemove = new ArrayList<OrderItem>();
-            for (OrderItem orderItem : customerCart.getOrderItems()) {
-                 if (orderItem instanceof DiscreteOrderItem) {
-                    DiscreteOrderItem discreteOrderItem = (DiscreteOrderItem) orderItem;
-                    if (discreteOrderItem.getSku().getActiveStartDate() != null) {
-                        if (!discreteOrderItem.getSku().isActive(
-                                discreteOrderItem.getProduct(),
-                                orderItem.getCategory())) {
-                            itemsToRemove.add(orderItem);
-                        }
-                    } else {
-                        if (!discreteOrderItem.getProduct().isActive() || !orderItem.getCategory().isActive()) {
-                            itemsToRemove.add(orderItem);
-                        }
-                    }
-                } else if (orderItem instanceof BundleOrderItem) {
-                    BundleOrderItem bundleOrderItem = (BundleOrderItem) orderItem;
-                    boolean removeBundle = false;
-                    for (DiscreteOrderItem discreteOrderItem : bundleOrderItem
-                            .getDiscreteOrderItems()) {
-                        if (discreteOrderItem.getSku().getActiveStartDate() != null) {
-                            if (!discreteOrderItem.getSku().isActive(
-                                    discreteOrderItem.getProduct(),
-                                    orderItem.getCategory())) {
-                                /*
-                                 * Bundle has an inactive item in it -- remove the
-                                 * whole bundle
-                                 */
-                                removeBundle = true;
-                                break;
-                            }
-                        } else {
-                            if (!discreteOrderItem.getProduct().isActive() || !orderItem.getCategory().isActive()) {
-                                removeBundle = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (removeBundle) {
-                        itemsToRemove.add(orderItem);
-                    }
-                }
-            }
-
-            //Remove any giftwrap items who have one or more wrapped item members that have been removed
-            for (OrderItem orderItem : customerCart.getOrderItems()) {
-                if (orderItem instanceof GiftWrapOrderItem) {
-                    for (OrderItem wrappedItem : ((GiftWrapOrderItem) orderItem).getWrappedItems()) {
-                        if (itemsToRemove.contains(wrappedItem)) {
-                            itemsToRemove.add(orderItem);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            for (OrderItem item : itemsToRemove) {
-                removeItemFromOrder(customerCart, item, priceOrder);
-            }
+            List<OrderItem> itemsToRemove = identifyItemsToRemove(customerCart);
+            removeItemsFromOrder(customerCart, itemsToRemove, priceOrder);
             reconstructCartResponse.setRemovedItems(itemsToRemove);
         }
         reconstructCartResponse.setOrder(customerCart);
         return reconstructCartResponse;
     }
+
+    private List<OrderItem> identifyItemsToRemove(Order customerCart) {
+        List<OrderItem> itemsToRemove = new ArrayList<>();
+        for (OrderItem orderItem : customerCart.getOrderItems()) {
+            if (shouldRemoveOrderItem(orderItem)) {
+                itemsToRemove.add(orderItem);
+            } else if (orderItem instanceof BundleOrderItem) {
+                if (shouldRemoveBundleOrderItem((BundleOrderItem) orderItem)) {
+                    itemsToRemove.add(orderItem);
+                }
+            }
+        }
+        return itemsToRemove;
+    }
+
+    private boolean shouldRemoveOrderItem(OrderItem orderItem) {
+        if (orderItem instanceof DiscreteOrderItem) {
+            DiscreteOrderItem discreteOrderItem = (DiscreteOrderItem) orderItem;
+            return !isItemActive(discreteOrderItem);
+        }
+        return false;
+    }
+
+    private boolean shouldRemoveBundleOrderItem(BundleOrderItem bundleOrderItem) {
+        for (DiscreteOrderItem discreteOrderItem : bundleOrderItem.getDiscreteOrderItems()) {
+            if (!isItemActive(discreteOrderItem)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isItemActive(DiscreteOrderItem item) {
+        return item.getSku().getActiveStartDate() == null || item.getSku().isActive(item.getProduct(), item.getCategory());
+    }
+
+    private void removeItemsFromOrder(Order customerCart, List<OrderItem> itemsToRemove, boolean priceOrder) throws PricingException {
+        for (OrderItem item : itemsToRemove) {
+            removeItemFromOrder(customerCart, item, priceOrder);
+        }
+    }
+
 
     protected Order mergeGiftWrapOrderItems(MergeCartResponse mergeCartResponse, Order customerCart, Map<OrderItem, OrderItem> oldNewItemMap) throws PricingException {
         //update any remaining gift wrap items with their cloned wrapped item values, instead of the originals

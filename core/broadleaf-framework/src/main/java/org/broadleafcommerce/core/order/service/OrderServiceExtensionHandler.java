@@ -32,7 +32,7 @@ import java.util.List;
  */
 public interface OrderServiceExtensionHandler extends ExtensionHandler {
     
-    ExtensionResultStatusType attachAdditionalDataToNewNamedCart(Customer customer, Order cart);
+    ExtensionResultStatusType attachNewCartData(Customer customer, Order cart);
 
     ExtensionResultStatusType preValidateCartOperation(Order cart, ExtensionResultHolder erh);
 

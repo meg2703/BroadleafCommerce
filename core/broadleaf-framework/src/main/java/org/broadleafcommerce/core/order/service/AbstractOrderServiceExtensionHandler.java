@@ -34,7 +34,7 @@ public abstract class AbstractOrderServiceExtensionHandler extends AbstractExten
         OrderServiceExtensionHandler {
     
     @Override
-    public ExtensionResultStatusType attachAdditionalDataToNewNamedCart(Customer customer, Order cart) {
+    public ExtensionResultStatusType attachNewCartData(Customer customer, Order cart) {
         return ExtensionResultStatusType.NOT_HANDLED;
     }
 

@@ -232,7 +232,7 @@ public class OrderServiceImpl implements OrderService {
         namedOrder.setStatus(OrderStatus.NAMED);
         
         if (extensionManager != null) {
-            extensionManager.getProxy().attachAdditionalDataToNewNamedCart(customer, namedOrder);
+            extensionManager.getProxy().attachNewCartData(customer, namedOrder);
         }
         
         if (BroadleafRequestContext.getBroadleafRequestContext() != null) {

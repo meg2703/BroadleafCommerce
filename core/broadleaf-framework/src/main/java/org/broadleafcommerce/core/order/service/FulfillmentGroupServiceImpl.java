@@ -121,46 +121,21 @@ public class FulfillmentGroupServiceImpl implements FulfillmentGroupService {
     }
 
     @Override
-    //@Transactional("blTransactionManager")
+//@Transactional("blTransactionManager")
     public FulfillmentGroup addItemToFulfillmentGroup(FulfillmentGroupItemRequest fulfillmentGroupItemRequest,
-            boolean priceOrder, boolean save) throws PricingException {
+                                                      boolean priceOrder, boolean save) throws PricingException {
         if (priceOrder && !save) {
             throw new IllegalArgumentException("Pricing requires a save");
         }
 
-        Order order = fulfillmentGroupItemRequest.getOrder();
+        Order order = getOrder(fulfillmentGroupItemRequest);
         OrderItem item = fulfillmentGroupItemRequest.getOrderItem();
         FulfillmentGroup fulfillmentGroup = fulfillmentGroupItemRequest.getFulfillmentGroup();
 
-        if (order == null) {
-            if (item.getOrder() != null) {
-                order = item.getOrder();
-            } else {
-                throw new IllegalArgumentException("Order must not be null");
-            }
-        }
-
-        // 1) Find the order item's existing fulfillment group, if any
-        for (FulfillmentGroup fg : order.getFulfillmentGroups()) {
-            Iterator<FulfillmentGroupItem> itr = fg.getFulfillmentGroupItems().iterator();
-            while (itr.hasNext()) {
-                FulfillmentGroupItem fgItem = itr.next();
-                if (fgItem.getOrderItem().equals(item)) {
-                    // 2) remove item from it's existing fulfillment group
-                    itr.remove();
-                    fulfillmentGroupItemDao.delete(fgItem);
-                }
-            }
-        }
+        removeExistingFulfillmentGroupItems(order, item);
 
         if (fulfillmentGroup == null) {
-            // API user is trying to add an item to a fulfillment group not created
-            fulfillmentGroup = fulfillmentGroupDao.create();
-            FulfillmentGroupRequest fgRequest = new FulfillmentGroupRequest();
-            fgRequest.setOrder(order);
-            fulfillmentGroup = addFulfillmentGroupToOrder(fgRequest, false);
-            fulfillmentGroup = save(fulfillmentGroup);
-            order.getFulfillmentGroups().add(fulfillmentGroup);
+            fulfillmentGroup = createAndAddNewFulfillmentGroup(order);
         }
 
         FulfillmentGroupItem fgi = createFulfillmentGroupItemFromOrderItem(item, fulfillmentGroup, fulfillmentGroupItemRequest.getQuantity());
@@ -168,7 +143,6 @@ public class FulfillmentGroupServiceImpl implements FulfillmentGroupService {
             fgi = fulfillmentGroupItemDao.save(fgi);
         }
 
-        // 3) add the item to the new fulfillment group
         fulfillmentGroup.addFulfillmentGroupItem(fgi);
 
         if (save) {
@@ -177,6 +151,43 @@ public class FulfillmentGroupServiceImpl implements FulfillmentGroupService {
 
         return fulfillmentGroup;
     }
+
+    private Order getOrder(FulfillmentGroupItemRequest request) {
+        Order order = request.getOrder();
+        OrderItem item = request.getOrderItem();
+        if (order == null) {
+            if (item.getOrder() != null) {
+                order = item.getOrder();
+            } else {
+                throw new IllegalArgumentException("Order must not be null");
+            }
+        }
+        return order;
+    }
+
+    private void removeExistingFulfillmentGroupItems(Order order, OrderItem item) {
+        for (FulfillmentGroup fg : order.getFulfillmentGroups()) {
+            Iterator<FulfillmentGroupItem> itr = fg.getFulfillmentGroupItems().iterator();
+            while (itr.hasNext()) {
+                FulfillmentGroupItem fgItem = itr.next();
+                if (fgItem.getOrderItem().equals(item)) {
+                    itr.remove();
+                    fulfillmentGroupItemDao.delete(fgItem);
+                }
+            }
+        }
+    }
+
+    private FulfillmentGroup createAndAddNewFulfillmentGroup(Order order) throws PricingException {
+        FulfillmentGroup fulfillmentGroup = fulfillmentGroupDao.create();
+        FulfillmentGroupRequest fgRequest = new FulfillmentGroupRequest();
+        fgRequest.setOrder(order);
+        fulfillmentGroup = addFulfillmentGroupToOrder(fgRequest, false);
+        fulfillmentGroup = save(fulfillmentGroup);
+        order.getFulfillmentGroups().add(fulfillmentGroup);
+        return fulfillmentGroup;
+    }
+
 
     @Override
     public List<FulfillmentGroupItem> getFulfillmentGroupItemsForOrderItem(Order order, OrderItem orderItem) {

@@ -202,19 +202,28 @@ public abstract class ExtensionManager<T extends ExtensionHandler> implements In
         boolean notHandled = true;
         for (ExtensionHandler handler : getHandlers()) {
             if (handler.isEnabled()) {
-                ExtensionResultStatusType result = operation.execute(handler, params);
+                ExtensionResultStatusType result = executeOperation(operation, handler, params);
                 if (!ExtensionResultStatusType.NOT_HANDLED.equals(result)) {
                     notHandled = false;
                 }
-                if (!shouldContinue(result, handler, null, null)) {
+                if (!shouldContinueExecution(result, handler)) {
                     break;
                 }
             }
         }
-        if (notHandled) {
-            return ExtensionResultStatusType.NOT_HANDLED;
-        } else {
-            return ExtensionResultStatusType.HANDLED;
-        }
+        return determineResult(notHandled);
     }
+
+    private ExtensionResultStatusType executeOperation(ExtensionManagerOperation operation, ExtensionHandler handler, Object... params) {
+        return operation.execute(handler, params);
+    }
+
+    private boolean shouldContinueExecution(ExtensionResultStatusType result, ExtensionHandler handler) {
+        return shouldContinue(result, handler, null, null);
+    }
+
+    private ExtensionResultStatusType determineResult(boolean notHandled) {
+        return notHandled ? ExtensionResultStatusType.NOT_HANDLED : ExtensionResultStatusType.HANDLED;
+    }
+
 }

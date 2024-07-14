@@ -10,7 +10,7 @@
  * the Broadleaf End User License Agreement (EULA), Version 1.1
  * (the "Commercial License" located at http://license.broadleafcommerce.org/commercial_license-1.1.txt)
  * shall apply.
- * 
+ *
  * Alternatively, the Commercial License may be replaced with a mutually agreed upon license (the "Custom License")
  * between you and Broadleaf Commerce. You may not use this file except in compliance with the applicable license.
  * #L%
@@ -36,12 +36,13 @@ import java.util.List;
 @Service("blOrderServiceExtensionManager")
 public class OrderServiceExtensionManager extends ExtensionManager<OrderServiceExtensionHandler> implements OrderServiceExtensionHandler {
 
-    public static final ExtensionManagerOperation attachAdditionalDataToNewNamedCart = new ExtensionManagerOperation() {
+    public static final ExtensionManagerOperation attachNewCartData = new ExtensionManagerOperation() {
         @Override
         public ExtensionResultStatusType execute(ExtensionHandler handler, Object... params) {
-            return ((OrderServiceExtensionHandler) handler).attachAdditionalDataToNewNamedCart((Customer) params[0], (Order) params[1]);
+            return ((OrderServiceExtensionHandler) handler).attachNewCartData((Customer) params[0], (Order) params[1]);
         }
     };
+
 
     public static final ExtensionManagerOperation preValidateCartOperation = new ExtensionManagerOperation() {
         @Override
@@ -97,8 +98,8 @@ public class OrderServiceExtensionManager extends ExtensionManager<OrderServiceE
     }
 
     @Override
-    public ExtensionResultStatusType attachAdditionalDataToNewNamedCart(Customer customer, Order cart) {
-        return execute(attachAdditionalDataToNewNamedCart, customer, cart);
+    public ExtensionResultStatusType attachNewCartData(Customer customer, Order cart) {
+        return execute(attachNewCartData, customer, cart);
     }
 
     @Override
